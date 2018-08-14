@@ -14,9 +14,18 @@ type Watchlist struct {
 	Client *Client `json:",ignore"`
 }
 
+type GetWatchListResults struct {
+	Results []Watchlist
+	Detail  string `json:"detail"`
+}
+
+func (resp *GetWatchListResults) Details() string {
+	return resp.Detail
+}
+
 // GetWatchlists retrieves the watchlists for a given set of credentials/accounts.
 func (c *Client) GetWatchlists() ([]Watchlist, error) {
-	var r struct{ Results []Watchlist }
+	var r GetWatchListResults
 	err := c.GetAndDecode(epWatchlists, &r)
 	if err != nil {
 		return nil, err
@@ -29,13 +38,22 @@ func (c *Client) GetWatchlists() ([]Watchlist, error) {
 	return r.Results, nil
 }
 
+type GetInstrumentsResponse2 struct {
+	Results []Instrument2
+	Detail  string `json:"detail"`
+}
+
+func (resp *GetInstrumentsResponse2) Details() string {
+	return resp.Detail
+}
+
+type Instrument2 struct {
+	Instrument, URL string
+}
+
 // GetInstruments returns the list of Instruments associated with a Watchlist.
 func (w *Watchlist) GetInstruments() ([]Instrument, error) {
-	var r struct {
-		Results []struct {
-			Instrument, URL string
-		}
-	}
+	var r GetInstrumentsResponse2
 
 	err := w.Client.GetAndDecode(w.URL, &r)
 	if err != nil {
@@ -62,7 +80,7 @@ func (w *Watchlist) GetInstruments() ([]Instrument, error) {
 	wg.Wait()
 
 	// Filter slice for empties (if error)
-	retInsts := []Instrument{}
+	var retInsts []Instrument
 	for _, inst := range insts {
 		if inst != nil {
 			retInsts = append(retInsts, *inst)

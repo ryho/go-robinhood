@@ -21,10 +21,19 @@ type Quote struct {
 	UpdatedAt                   string  `json:"updated_at"`
 }
 
+type GetQuotesResponse struct {
+	Results []Quote
+	Detail  string `json:"detail"`
+}
+
+func (resp *GetQuotesResponse) Details() string {
+	return resp.Detail
+}
+
 // GetQuote returns all the latest stock quotes for the list of stocks provided
 func (c Client) GetQuote(stocks ...string) ([]Quote, error) {
 	url := epQuotes + "?symbols=" + strings.Join(stocks, ",")
-	var r struct{ Results []Quote }
+	var r GetQuotesResponse
 	err := c.GetAndDecode(url, &r)
 	return r.Results, err
 }

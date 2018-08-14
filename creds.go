@@ -1,41 +1,69 @@
 package robinhood
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 	"path"
-	"strings"
+	"time"
 )
+
+var DebugMode bool
 
 type TokenGetter interface {
 	GetToken() (string, error)
 }
 
 type Creds struct {
-	Username, Password string
+	Username string `json:"username"`
+	Password string `json:"password"`
+	MFA      string `json:"mfa_code"`
+	// Expiration time in seconds
+	ExpiresIn int    `json:"expires_in"`
+	Scope     string `json:"scope"`
+	ClientId  string `json:"client_id"`
+	GrantType string `json:"grant_type"`
+}
+
+type LoginResponse struct {
+	Token       string `json:"access_token"`
+	MFAType     string `json:"mfa_type"`
+	MFARequired bool   `json:"mfa_required"`
+	Detail      string `json:"detail"`
+}
+
+func (resp *LoginResponse) Details() string {
+	return resp.Detail
+}
+
+func NewCreds(username, password string) *Creds {
+	return NewCredsWithMFA(username, password, "")
+}
+
+func NewCredsWithMFA(username, password, mfa string) *Creds {
+	return &Creds{
+		Username: username,
+		Password: password,
+		MFA:      mfa,
+		// 72 hours, in seconds
+		ExpiresIn: int((72 * time.Hour) / time.Second),
+		// These are the values that the Robinhood Website uses:
+		Scope:     "internal",
+		ClientId:  "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS",
+		GrantType: "password",
+	}
 }
 
 func (c *Creds) GetToken() (string, error) {
-	res, err := http.Post(epLogin, "application/x-www-form-urlencoded", strings.NewReader(c.Values().Encode()))
+	var resp LoginResponse
+	err := unauthenticatedPostAndDecode(epLogin, c, &resp)
 	if err != nil {
 		return "", err
 	}
-	defer res.Body.Close()
-
-	var cli Client
-	err = json.NewDecoder(res.Body).Decode(&cli)
-	return cli.Token, err
-}
-
-func (c Creds) Values() url.Values {
-	return url.Values{
-		"username": []string{c.Username},
-		"password": []string{c.Password},
+	if resp.MFARequired {
+		return "", fmt.Errorf("this account requires two factor. Two factor type: %v", resp.MFAType)
 	}
+	return resp.Token, nil
 }
 
 // A CredsCacher takes user credentials and a file path. The token obtained
@@ -59,7 +87,7 @@ func (c *CredsCacher) GetToken() (string, error) {
 
 	_, err = os.Stat(c.Path)
 	if err != nil {
-		if strings.Contains(err.Error(), "no such file") {
+		if os.IsNotExist(err) {
 			mustLogin = true
 		} else {
 			return "", err
@@ -68,7 +96,10 @@ func (c *CredsCacher) GetToken() (string, error) {
 
 	if !mustLogin {
 		bs, err := ioutil.ReadFile(c.Path)
-		return string(bs), err
+		bsstr := string(bs)
+		if err != nil || bsstr != "" {
+			return bsstr, err
+		}
 	}
 
 	f, err := os.OpenFile(c.Path, os.O_CREATE|os.O_RDWR, 0640)

@@ -53,8 +53,17 @@ type MarginBalances struct {
 	UnsettledFunds                    float64 `json:"unsettled_funds,string"`
 }
 
+type GetAccountsResponse struct {
+	Results []Account
+	Detail  string `json:"detail"`
+}
+
+func (resp *GetAccountsResponse) Details() string {
+	return resp.Detail
+}
+
 func (c *Client) GetAccounts() ([]Account, error) {
-	var r struct{ Results []Account }
+	var r GetAccountsResponse
 	err := c.GetAndDecode(epAccounts, &r)
 	if err != nil {
 		return nil, err

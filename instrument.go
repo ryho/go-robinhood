@@ -19,6 +19,11 @@ type Instrument struct {
 	Symbol             string      `json:"symbol"`
 	Tradeable          bool        `json:"tradeable"`
 	URL                string      `json:"url"`
+	Detail             string      `json:"detail"`
+}
+
+func (resp *Instrument) Details() string {
+	return resp.Detail
 }
 
 func (c Client) GetInstrument(instURL string) (*Instrument, error) {
@@ -27,8 +32,17 @@ func (c Client) GetInstrument(instURL string) (*Instrument, error) {
 	return &i, err
 }
 
+type GetInstrumentsResponse struct {
+	Results []Instrument
+	Detail  string `json:"detail"`
+}
+
+func (resp *GetInstrumentsResponse) Details() string {
+	return resp.Detail
+}
+
 func (c Client) GetInstrumentForSymbol(sym string) (*Instrument, error) {
-	var i Instrument
+	var i GetInstrumentsResponse
 	err := c.GetAndDecode(epInstruments+"?symbol="+sym, &i)
-	return &i, err
+	return &i.Results[0], err
 }

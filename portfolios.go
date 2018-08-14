@@ -21,10 +21,19 @@ type Portfolio struct {
 	WithdrawableAmount                     float64 `json:"withdrawable_amount,string"`
 }
 
+type GetPortfolioResponse struct {
+	Results []Portfolio
+	Detail  string `json:"detail"`
+}
+
+func (resp *GetPortfolioResponse) Details() string {
+	return resp.Detail
+}
+
 // GetPortfolios returns all the portfolios associated with a client's
 // credentials and accounts
 func (c *Client) GetPortfolios() ([]Portfolio, error) {
-	var p struct{ Results []Portfolio }
+	var p GetPortfolioResponse
 	err := c.GetAndDecode(epPortfolios, &p)
 	return p.Results, err
 }

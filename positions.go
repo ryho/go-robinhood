@@ -12,9 +12,18 @@ type Position struct {
 	SharesHeldForSells      float64 `json:"shares_held_for_sells,string"`
 }
 
+type GetPositionsResponse struct {
+	Results []Position
+	Detail  string `json:"detail"`
+}
+
+func (resp *GetPositionsResponse) Details() string {
+	return resp.Detail
+}
+
 // GetPositions returns all the positions associated with an account.
 func (c Client) GetPositions(a Account) ([]Position, error) {
-	var r struct{ Results []Position }
+	var r GetPositionsResponse
 	err := c.GetAndDecode(a.Positions, &r)
 	return r.Results, err
 }
